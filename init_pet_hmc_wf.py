@@ -13,102 +13,101 @@ from nipype import Node, Function, MapNode
 from nipype.pipeline import Workflow
 from nipype.interfaces.io import SelectFiles
 from bids import BIDSLayout
-from init_pet_hmc_wf import update_list_frames, update_list_transforms, add_mc_ext, lta2mat, get_min_frame, combine_hmc_outputs, plot_motion_outputs
-
 
 # Define BIDS directory, including input/output relations
+def main():
 
-bids_dir = '/Users/martinnorgaard/Dropbox/Mac/Documents/BIDS/data/ogden2006/rawdata'
+    bids_dir = '/mnt/WDmartin28/cimbi/dasb/rawdata'
 
-layout = BIDSLayout(bids_dir)
-infosource = Node(IdentityInterface(
+    layout = BIDSLayout(bids_dir)
+    infosource = Node(IdentityInterface(
                     fields = ['subject_id','session_id']),
                     name = "infosource")
 
-infosource.iterables = [('subject_id', layout.get_subjects()), 
+    infosource.iterables = [('subject_id', layout.get_subjects()), 
                         ('session_id', layout.get_sessions())]
 
-templates = {'pet': 'sub-{subject_id}/ses-{session_id}/pet/*_pet.[n]*', 
+    templates = {'pet': 'sub-{subject_id}/ses-{session_id}/pet/*_pet.[n]*', 
              'json': 'sub-{subject_id}/ses-{session_id}/pet/*_pet.json'}
            
-selectfiles = Node(SelectFiles(templates, 
+    selectfiles = Node(SelectFiles(templates, 
                                base_directory = bids_dir), 
                                name = "select_files")
 
-datasink = Node(DataSink(base_directory = os.path.join(bids_dir, 'derivatives')), 
+    datasink = Node(DataSink(base_directory = os.path.join(bids_dir, 'derivatives')), 
                          name = "datasink")
 
-substitutions = [('_subject_id', 'sub'), ('_session_id_', 'ses')]
-subjFolders = [('sub-%s_ses-%s' % (sub,ses), 'sub-%s/ses-%s' %(sub,ses))
+    substitutions = [('_subject_id', 'sub'), ('_session_id_', 'ses')]
+    subjFolders = [('sub-%s_ses-%s' % (sub,ses), 'sub-%s/ses-%s' %(sub,ses))
                for ses in layout.get_sessions()
                for sub in layout.get_subjects()]
 
-substitutions.extend(subjFolders)
-datasink.inputs.substitutions = substitutions
+    substitutions.extend(subjFolders)
+    datasink.inputs.substitutions = substitutions
 
-# Define nodes for hmc workflow
+    # Define nodes for hmc workflow
 
-split_pet = Node(interface = fs.MRIConvert(split = True), 
+    split_pet = Node(interface = fs.MRIConvert(split = True), 
                      name = "split_pet")
     
-smooth_frame = MapNode(interface=fsl.Smooth(fwhm=10), 
+    smooth_frame = MapNode(interface=fsl.Smooth(fwhm=10), 
                            name="smooth_frame", 
                            iterfield=['in_file'])
     
-thres_frame = MapNode(interface = fsl.maths.Threshold(thresh = 20, use_robust_range = True),
+    thres_frame = MapNode(interface = fsl.maths.Threshold(thresh = 20, use_robust_range = True),
                           name = "thres_frame", 
                           iterfield = ['in_file'])
     
-estimate_motion = Node(interface = fs.RobustTemplate(auto_detect_sensitivity = True,
+    estimate_motion = Node(interface = fs.RobustTemplate(auto_detect_sensitivity = True,
                                             intensity_scaling = True,
                                             average_metric = 'mean',
                                             args = '--cras'),
                            name="estimate_motion", iterfield=['in_files'])
     
-correct_motion = MapNode(interface = fs.ApplyVolTransform(), 
+    correct_motion = MapNode(interface = fs.ApplyVolTransform(), 
                              name = "correct_motion", 
                              iterfield = ['source_file', 'reg_file', 'transformed_file'])
     
-concat_frames = Node(interface = fs.Concatenate(concatenated_file = 'mc.nii.gz'), 
+    concat_frames = Node(interface = fs.Concatenate(concatenated_file = 'mc.nii.gz'), 
                          name = "concat_frames")
     
-lta2xform = MapNode(interface = fs.utils.LTAConvert(), 
+    lta2xform = MapNode(interface = fs.utils.LTAConvert(), 
                         name = "lta2xform", 
                         iterfield = ['in_lta', 'out_fsl'])
     
-est_trans_rot = MapNode(interface = fsl.AvScale(all_param = True), 
+    est_trans_rot = MapNode(interface = fsl.AvScale(all_param = True), 
                             name = "est_trans_rot", 
                             iterfield = ['mat_file'])
     
-est_min_frame = Node(Function(input_names = ['json_file'],
+    est_min_frame = Node(Function(input_names = ['json_file'],
                                   output_names = ['min_frame'],
                                   function = get_min_frame),
                          name = "est_min_frame")
     
-upd_frame_list = Node(Function(input_names = ['in_file','min_frame'],
+    upd_frame_list = Node(Function(input_names = ['in_file','min_frame'],
                                    output_names = ['upd_list_frames'],
                                    function = update_list_frames),
                           name = "upd_frame_list")
     
-upd_transform_list = Node(Function(input_names = ['in_file','min_frame'],
+    upd_transform_list = Node(Function(input_names = ['in_file','min_frame'],
                                        output_names = ['upd_list_transforms'],
                                        function = update_list_transforms),
                           name = "upd_transform_list")
     
-hmc_movement_output = Node(Function(input_names = ['translations', 'rot_angles', 'rotation_translation_matrix','in_file'],
+    hmc_movement_output = Node(Function(input_names = ['translations', 'rot_angles', 'rotation_translation_matrix','in_file'],
                                            output_names = ['hmc_confounds'],
                                            function = combine_hmc_outputs),
                                name = "hmc_movement_output")
     
-plot_motion = Node(Function(input_names = ['in_file'],
+    plot_motion = Node(Function(input_names = ['in_file'],
                                            function = plot_motion_outputs),
                                name = "plot_motion")
     
 # Connect workflow - init_pet_hmc_wf
-workflow = Workflow(name = "hmc_workflow")
-workflow.config['execution']['remove_unnecessary_outputs'] = 'false'
-workflow.base_dir = bids_dir
-workflow.connect([(infosource, selectfiles, [('subject_id', 'subject_id'),('session_id', 'session_id')]), 
+    workflow = Workflow(name = "hmc_workflow")
+    workflow.config['execution']['remove_unnecessary_outputs'] = 'false'
+    workflow.base_dir = bids_dir
+    workflow.connect([(infosource, selectfiles, [('subject_id', 'subject_id'),('session_id', 'session_id')]), 
                          (selectfiles, split_pet, [('pet', 'in_file')]),
                          (selectfiles, est_min_frame, [('json', 'json_file')]),
                          (split_pet,smooth_frame,[('out_file', 'in_file')]),
@@ -131,7 +130,7 @@ workflow.connect([(infosource, selectfiles, [('subject_id', 'subject_id'),('sess
                          (upd_frame_list,hmc_movement_output,[('upd_list_frames', 'in_file')]),
                          (hmc_movement_output,plot_motion,[('hmc_confounds','in_file')])
                          ])
-test = workflow.run(plugin='MultiProc', plugin_args={'n_procs' : 6})
+    test = workflow.run(plugin='MultiProc', plugin_args={'n_procs' : 6})
 
 # HELPER FUNCTIONS
 def update_list_frames(in_file, min_frame):
@@ -303,3 +302,6 @@ def plot_motion_outputs(in_file):
     plt.grid(visible=True)
     plt.savefig(os.path.join(new_pth,'movement.png'), format='png')
     plt.close()
+    
+if __name__ == '__main__':
+    main()
