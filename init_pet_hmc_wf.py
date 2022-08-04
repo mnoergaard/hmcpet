@@ -13,6 +13,7 @@ from nipype import Node, Function, MapNode
 from nipype.pipeline import Workflow
 from nipype.interfaces.io import SelectFiles
 from bids import BIDSLayout
+from init_pet_hmc_wf import update_list_frames, update_list_transforms, add_mc_ext, lta2mat, get_min_frame, combine_hmc_outputs, plot_motion_outputs
 
 
 # Define BIDS directory, including input/output relations
