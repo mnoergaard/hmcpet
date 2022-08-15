@@ -5,6 +5,7 @@
 """
 
 import os
+import sys
 import nipype.interfaces.freesurfer as fs
 import nipype.interfaces.fsl as fsl
 from nipype.interfaces.utility import IdentityInterface
@@ -15,14 +16,19 @@ from nipype.interfaces.io import SelectFiles
 from bids import BIDSLayout
 
 # Define BIDS directory, including input/output relations
-def main(bids_dir):
+def main():
     """
     Main function to run the workflow.
 
     Arguments
     ---------
     bids_dir : BIDS directory
+    n_procs : number of processors to use
     """
+
+    args = sys.argv[1:]
+    bids_dir = args[0]
+    n_procs = int(args[1])
 
     layout = BIDSLayout(bids_dir)
     infosource = Node(IdentityInterface(
@@ -135,7 +141,7 @@ def main(bids_dir):
                          (upd_frame_list,hmc_movement_output,[('upd_list_frames', 'in_file')]),
                          (hmc_movement_output,plot_motion,[('hmc_confounds','in_file')])
                          ])
-    wf = workflow.run(plugin='MultiProc', plugin_args={'n_procs' : 6})
+    wf = workflow.run(plugin='MultiProc', plugin_args={'n_procs' : n_procs})
 
 # HELPER FUNCTIONS
 def update_list_frames(in_file, min_frame):   
