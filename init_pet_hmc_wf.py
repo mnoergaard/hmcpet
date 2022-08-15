@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 """
 @author: martinnorgaard
+Date: 2022-08-15
+
+This script is used to run the hmc workflow on the dynamic PET data.
 """
 
 import os
