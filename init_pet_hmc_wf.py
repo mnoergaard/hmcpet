@@ -15,9 +15,14 @@ from nipype.interfaces.io import SelectFiles
 from bids import BIDSLayout
 
 # Define BIDS directory, including input/output relations
-def main():
+def main(bids_dir)):
+    """
+    Main function to run the workflow.
 
-    bids_dir = '/mnt/WDmartin28/cimbi/dasb/rawdata'
+    Arguments
+    ---------
+    bids_dir : BIDS directory
+    """
 
     layout = BIDSLayout(bids_dir)
     infosource = Node(IdentityInterface(
@@ -130,38 +135,56 @@ def main():
                          (upd_frame_list,hmc_movement_output,[('upd_list_frames', 'in_file')]),
                          (hmc_movement_output,plot_motion,[('hmc_confounds','in_file')])
                          ])
-    test = workflow.run(plugin='MultiProc', plugin_args={'n_procs' : 6})
+    wf = workflow.run(plugin='MultiProc', plugin_args={'n_procs' : 6})
 
 # HELPER FUNCTIONS
-def update_list_frames(in_file, min_frame):
-    
-    """
-    
-    Arguments
-    ---------
+def update_list_frames(in_file, min_frame):   
+    """  
+    Function to update the list of frames to be used in the hmc workflow.
+
+    Parameters
+    ----------
+    in_file : list of frames
+    min_frame : minimum frame to use for the analysis (first frame after 2 min)
+
+    Returns
+    -------
+    new_list : list of updated frames to be used in the hmc workflow
+
     """
     
     new_list = [in_file[min_frame]] * min_frame + in_file[min_frame:]
     return new_list
 
-def update_list_transforms(in_file, min_frame):
-    
+def update_list_transforms(in_file, min_frame):   
     """
+    Function to update the list of transforms to be used in the hmc workflow.
     
-    Arguments
-    ---------
+    Parameters
+    ----------
+    in_file : list of transforms
+    min_frame : minimum frame to use for the analysis (first frame after 2 min)
+
+    Returns
+    -------
+    lta_list : list of updated transforms to be used in the hmc workflow
     """
     
     new_list = [in_file[min_frame]] * min_frame + in_file[min_frame:]
     lta_list = [ext.replace('nii.gz','lta') for ext in new_list]  
     return lta_list
 
-def add_mc_ext(in_file):
-    
-    """
-    
-    Arguments
-    ---------
+def add_mc_ext(in_file):    
+    """ 
+    Function to add the mc extension to the list of file names.
+
+    Parameters
+    ----------
+    in_file : file name to be updated
+
+    Returns
+    -------
+    mc_list : list of updated file names with mc extension
     """
     
     if len(in_file) > 1:
@@ -170,26 +193,33 @@ def add_mc_ext(in_file):
         mc_list = in_file.replace('.nii.gz','_mc.nii')
     return mc_list
 
-def lta2mat(in_file):
-    
+def lta2mat(in_file):  
     """
+    Function to convert the lta file to the fsl format (.mat).
     
-    Arguments
-    ---------
+    Parameters
+    ----------
+    in_file : list of lta files to be converted
+
+    Returns
+    -------
+    mat_list : list of mat files
     """
     
     mat_list = [ext.replace('.lta','.mat') for ext in in_file]
     return mat_list 
 
-def get_min_frame(json_file):
-    
+def get_min_frame(json_file):  
     """
-        Extract the frame number after 120 seconds of mid frames of dynamic PET data to be used with motion correction
+    Function to extract the frame number after 120 seconds of mid frames of dynamic PET data to be used with motion correction
         
-    Arguments
-    ---------
-    json_file: string
-        path to BIDS json PET file
+    Parameters
+    ----------
+    json_file : json file containing the frame length and duration of the dynamic PET data
+
+    Returns
+    -------
+    min_frame : minimum frame to use for the motion correction (first frame after 2 min)
     """  
     
     import os
@@ -208,12 +238,21 @@ def get_min_frame(json_file):
     return min_frame  
 
 
-def combine_hmc_outputs(translations, rot_angles, rotation_translation_matrix, in_file):
-    
+def combine_hmc_outputs(translations, rot_angles, rotation_translation_matrix, in_file):   
     """
     
-    Arguments
-    ---------
+    Function to combine the outputs of the hmc workflow.
+
+    Parameters
+    ----------
+    translations : list of estimated translations across frames
+    rot_angles : list of estimated rotational angles across frames
+    rotation_translation_matrix : list of estimated rotation translation matrices across frames
+    in_file : list of frames to be used in the hmc workflow
+
+    Returns
+    -------
+    Output path to confounds file for head motion correction
     """
     
     import os
@@ -248,12 +287,17 @@ def combine_hmc_outputs(translations, rot_angles, rotation_translation_matrix, i
     
     return os.path.join(new_pth,'hmc_confounds.tsv')
 
-def plot_motion_outputs(in_file):
-    
+def plot_motion_outputs(in_file):   
     """
+    Function to plot estimated motion data
     
-    Arguments
-    ---------
+    Parameters 
+    ----------
+    in_file : list of estimated motion data
+
+    Returns
+    -------
+    Plots of estimated motion data
     """
     
     import os
