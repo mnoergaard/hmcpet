@@ -18,7 +18,7 @@ from bids import BIDSLayout
 # Define BIDS directory, including input/output relations
 def main():
     """
-    Main function to run the workflow.
+    Main function to run the PETPrep HMC workflow.
 
     Arguments
     ---------
