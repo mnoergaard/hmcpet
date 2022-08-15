@@ -15,7 +15,7 @@ from nipype.interfaces.io import SelectFiles
 from bids import BIDSLayout
 
 # Define BIDS directory, including input/output relations
-def main(bids_dir)):
+def main(bids_dir):
     """
     Main function to run the workflow.
 
