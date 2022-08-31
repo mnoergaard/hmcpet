@@ -61,7 +61,7 @@ def main():
 
     # Define nodes for hmc workflow
 
-    split_pet = Node(interface = fs.MRIConvert(split = True, conform_min = True), 
+    split_pet = Node(interface = fs.MRIConvert(split = True, conform_min = True, out_datatype = 'float'), 
                      name = "split_pet")
     
     smooth_frame = MapNode(interface=fsl.Smooth(fwhm=10), 
