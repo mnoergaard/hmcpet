@@ -31,6 +31,7 @@ parser.add_argument('output_dir', help='The directory where the output files '
                     'should be stored. If you are running group level analysis '
                     'this folder should be prepopulated with the results of the'
                     'participant level analysis.')
+parser.add_argument('n_procs', help='number of processors to use')
 parser.add_argument('analysis_level', help='Level of the analysis that will be performed. '
                     'Multiple participant level analyses can be run independently '
                     '(in parallel) using the same output_dir.',
