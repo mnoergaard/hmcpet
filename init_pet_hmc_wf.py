@@ -17,6 +17,10 @@ from nipype import Node, Function, MapNode
 from nipype.pipeline import Workflow
 from nipype.interfaces.io import SelectFiles
 from bids import BIDSLayout
+from pathlib import Path
+import glob
+import re
+import shutil
 
 # Define BIDS directory, including input/output relations
 def main():
@@ -145,6 +149,32 @@ def main():
                          (hmc_movement_output,plot_motion,[('hmc_confounds','in_file')])
                          ])
     wf = workflow.run(plugin='MultiProc', plugin_args={'n_procs' : n_procs})
+    
+    # clean up and create derivatives directories
+    output_dir = os.path.join(bids_dir,'derivatives','petprep_hmc_wf')
+    os.mkdir(output_dir)
+    
+    # loop through directories and store according to BIDS
+    mc_files = glob.glob(os.path.join(Path(bids_dir),'hmc_workflow','*','*','mc.nii.gz'))
+    confound_files = glob.glob(os.path.join(Path(bids_dir),'hmc_workflow','*','*','hmc_confounds.tsv'))
+    movement = glob.glob(os.path.join(Path(bids_dir),'hmc_workflow','*','*','movement.png'))
+    rotation = glob.glob(os.path.join(Path(bids_dir),'hmc_workflow','*','*','rotation.png'))
+    translation = glob.glob(os.path.join(Path(bids_dir),'hmc_workflow','*','*','translation.png'))
+    
+    for idx, x in enumerate(mc_files):
+        sub_id = re.findall('subject_id_(.*)/concat', mc_files[idx])[0]
+        session = re.findall('session_id_(.*)_subject_id', mc_files[idx])[0]
+        sub_out_dir = Path(os.path.join(output_dir,'sub-' + sub_id,'ses-' + session))
+        os.makedirs(sub_out_dir)
+        shutil.copyfile(mc_files[idx],os.path.join(sub_out_dir,'sub-' + sub_id + '_ses-' + session + '_desc-mc_pet.nii.gz'))
+        shutil.copyfile(confound_files[idx],os.path.join(sub_out_dir,'sub-' + sub_id + '_ses-' + session + '_desc-confounds_timeseries.tsv'))
+        shutil.copyfile(movement[idx],os.path.join(sub_out_dir,'sub-' + sub_id + '_ses-' + session + '_movement.png'))
+        shutil.copyfile(rotation[idx],os.path.join(sub_out_dir,'sub-' + sub_id + '_ses-' + session + '_rotation.png'))
+        shutil.copyfile(translation[idx],os.path.join(sub_out_dir,'sub-' + sub_id + '_ses-' + session + '_translation.png'))
+        
+     # remove temp outputs
+    os.rmdir(os.path.join(bids_dir,'hmc_workflow'))
+        
 
 # HELPER FUNCTIONS
 def update_list_frames(in_file, min_frame):   
